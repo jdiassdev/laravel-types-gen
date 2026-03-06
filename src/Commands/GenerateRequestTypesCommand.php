@@ -51,7 +51,7 @@ class GenerateRequestTypesCommand extends Command
 
     $generator = new TypeScriptGenerator();
     $tsContent = $generator->generate($types);
-    dump("Generated TypeScript content:\n$tsContent");
+
 
     $outputPath = $this->laravel->basePath('resources/types');
 
@@ -62,6 +62,5 @@ class GenerateRequestTypesCommand extends Command
     File::put($outputPath . '/api-request.ts', $tsContent);
 
     $this->info('Types generated!');
-    dump('Generation complete.');
   }
 }
