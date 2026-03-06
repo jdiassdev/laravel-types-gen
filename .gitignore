@@ -1,0 +1,29 @@
+# dependencies
+/vendor
+
+# composer
+composer.lock
+
+# phpunit
+.phpunit.result.cache
+coverage/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+
+# env
+.env
+.env.*
+
+
+# build
+dist/
+build/
