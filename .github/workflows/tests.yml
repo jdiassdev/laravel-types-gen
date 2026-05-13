@@ -31,6 +31,8 @@ jobs:
           coverage: none
 
       - name: install dependencies
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
         run: |
           composer require \
             "laravel/framework:${{ matrix.laravel.version }}" \
