@@ -4,7 +4,7 @@ namespace Jdiassdev\LaravelTypesGen\Scanners;
 
 use Illuminate\Support\Facades\File;
 
-class RequestScanner
+class ResourceScanner
 {
     public function scan(string $path): array
     {
@@ -12,14 +12,14 @@ class RequestScanner
             return [];
         }
 
-        $requests = [];
+        $resources = [];
 
         foreach (File::allFiles($path) as $file) {
-            if (str_ends_with($file->getFilename(), 'Request.php')) {
-                $requests[] = $file->getRealPath();
+            if (str_ends_with($file->getFilename(), 'Resource.php')) {
+                $resources[] = $file->getRealPath();
             }
         }
 
-        return $requests;
+        return $resources;
     }
 }

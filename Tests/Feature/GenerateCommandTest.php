@@ -2,53 +2,123 @@
 
 namespace Jdiassdev\LaravelTypesGen\Tests\Feature;
 
-use Jdiassdev\LaravelTypesGen\Tests\TestCase;
 use Illuminate\Support\Facades\File;
 use Jdiassdev\LaravelTypesGen\Tests\BaseTestCase;
 
 class GenerateCommandTest extends BaseTestCase
 {
-  public function test_it_runs_the_command_successfully()
-  {
-    $tempPath = app_path('Http/Requests');
+    public function test_it_generates_request_types_with_string_style_rules()
+    {
+        $this->createRequest('UserRequest', "
+            return [
+                'email' => 'required|email',
+                'date'  => 'required|boolean',
+                'age'   => 'required|integer|nullable',
+                'bio'   => 'string',
+            ];
+        ");
 
-    if (!File::isDirectory($tempPath)) {
-      File::makeDirectory($tempPath, 0755, true);
+        $this->artisan('ts:generate')->assertExitCode(0);
+
+        $content = File::get(resource_path('types/api-request.ts'));
+
+        $this->assertStringContainsString('export interface UserRequest', $content);
+        $this->assertStringContainsString('email: string', $content);
+        $this->assertStringContainsString('date: boolean', $content);
+        $this->assertStringContainsString('age: number | null', $content);
+        $this->assertStringContainsString('bio?: string', $content);
     }
 
-    File::put(
-      $tempPath . '/UserRequest.php',
-      "<?php
+    public function test_it_generates_request_types_with_array_style_rules()
+    {
+        $this->createRequest('ProductRequest', "
+            return [
+                'name' => ['required', 'string'],
+                'tags' => ['required', 'array'],
+                'note' => ['string'],
+            ];
+        ");
 
-        namespace App\Http\Requests;
+        $this->artisan('ts:generate')->assertExitCode(0);
 
-        use Illuminate\Foundation\Http\FormRequest;
+        $content = File::get(resource_path('types/api-request.ts'));
 
-        class UserRequest extends FormRequest {
+        $this->assertStringContainsString('export interface ProductRequest', $content);
+        $this->assertStringContainsString('name: string', $content);
+        $this->assertStringContainsString('tags: any[]', $content);
+        $this->assertStringContainsString('note?: string', $content);
+    }
 
-            public function rules(): array
-            {
-                return [
-                    'email' => 'required|email',
-                    'date' => 'required|boolean',
-                    'age' => 'required|integer|nullable',
-                ];
+    public function test_it_generates_resource_types()
+    {
+        $this->createResource('UserResource', "
+            return [
+                'id'    => \$this->id,
+                'name'  => \$this->name,
+                'email' => \$this->email,
+            ];
+        ");
+
+        $this->artisan('ts:generate')->assertExitCode(0);
+
+        $content = File::get(resource_path('types/api-resource.ts'));
+
+        $this->assertStringContainsString('export interface UserResource', $content);
+        $this->assertStringContainsString('id: any', $content);
+        $this->assertStringContainsString('name: any', $content);
+        $this->assertStringContainsString('email: any', $content);
+    }
+
+    public function test_it_generates_nested_types_from_dot_notation()
+    {
+        $this->createRequest('AddressRequest', "
+            return [
+                'address.city'   => 'required|string',
+                'address.street' => 'string',
+            ];
+        ");
+
+        $this->artisan('ts:generate')->assertExitCode(0);
+
+        $content = File::get(resource_path('types/api-request.ts'));
+
+        $this->assertStringContainsString('export interface AddressRequest', $content);
+        $this->assertStringContainsString('address:', $content);
+        $this->assertStringContainsString('city: string', $content);
+        $this->assertStringContainsString('street?: string', $content);
+    }
+
+    private function createRequest(string $name, string $rulesBody): void
+    {
+        $path = app_path('Http/Requests');
+
+        if (!File::isDirectory($path)) {
+            File::makeDirectory($path, 0755, true);
+        }
+
+        File::put("{$path}/{$name}.php", "<?php
+            namespace App\Http\Requests;
+            use Illuminate\Foundation\Http\FormRequest;
+            class {$name} extends FormRequest {
+                public function rules(): array { {$rulesBody} }
             }
-        }"
-    );
+        ");
+    }
 
-    $this->artisan('ts:generate-requests')
-      ->assertExitCode(0);
+    private function createResource(string $name, string $toArrayBody): void
+    {
+        $path = app_path('Http/Resources');
 
-    $file = resource_path('types/api-request.ts');
+        if (!File::isDirectory($path)) {
+            File::makeDirectory($path, 0755, true);
+        }
 
-    $this->assertTrue(File::exists($file));
-
-    $content = File::get($file);
-
-    $this->assertStringContainsString('export interface UserRequest', $content);
-    $this->assertStringContainsString('email: string', $content);
-    $this->assertStringContainsString('date: boolean', $content);
-    $this->assertStringContainsString('age: number | null', $content);
-  }
+        File::put("{$path}/{$name}.php", "<?php
+            namespace App\Http\Resources;
+            use Illuminate\Http\Resources\Json\JsonResource;
+            class {$name} extends JsonResource {
+                public function toArray(\$request): array { {$toArrayBody} }
+            }
+        ");
+    }
 }

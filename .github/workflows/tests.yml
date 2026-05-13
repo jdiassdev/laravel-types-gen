@@ -1,0 +1,42 @@
+name: tests
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.2", "8.3"]
+        laravel:
+          - { version: "11.*", testbench: "9.*" }
+          - { version: "12.*", testbench: "10.*" }
+
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup php
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, fileinfo
+          coverage: none
+
+      - name: install dependencies
+        run: |
+          composer require \
+            "laravel/framework:${{ matrix.laravel.version }}" \
+            "orchestra/testbench:${{ matrix.laravel.testbench }}" \
+            --no-interaction --no-update
+          composer update --prefer-dist --no-interaction
+
+      - name: run tests
+        run: vendor/bin/phpunit

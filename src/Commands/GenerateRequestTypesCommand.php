@@ -3,64 +3,76 @@
 namespace Jdiassdev\LaravelTypesGen\Commands;
 
 use Illuminate\Console\Command;
-use Jdiassdev\LaravelTypesGen\Parsers\RequestParser;
-use Jdiassdev\LaravelTypesGen\Generators\TypeScriptGenerator;
 use Illuminate\Support\Facades\File;
+use Jdiassdev\LaravelTypesGen\Generators\TypeScriptGenerator;
 use Jdiassdev\LaravelTypesGen\Mappers\TypeMapper;
+use Jdiassdev\LaravelTypesGen\Parsers\RequestParser;
+use Jdiassdev\LaravelTypesGen\Parsers\ResourceParser;
 use Jdiassdev\LaravelTypesGen\Parsers\RuleParser;
 use Jdiassdev\LaravelTypesGen\Scanners\RequestScanner;
+use Jdiassdev\LaravelTypesGen\Scanners\ResourceScanner;
 
 class GenerateRequestTypesCommand extends Command
 {
-  protected $signature = 'ts:generate-requests';
-  protected $description = 'Generate TypeScript types from Laravel FormRequests';
+    protected $signature = 'ts:generate';
+    protected $description = 'generate typescript types from laravel formrequests and api resources';
 
-  public function handle()
-  {
-    $path = $this->laravel->basePath('app/Http/Requests');
+    public function handle()
+    {
+        $outputPath = config('laravel-types-gen.output_path', $this->laravel->basePath('resources/types'));
+        $generator = new TypeScriptGenerator();
 
-    $scanner = new RequestScanner();
-    $parser = new RequestParser();
+        if (!File::exists($outputPath)) {
+            File::makeDirectory($outputPath, 0755, true);
+        }
 
-    $files = $scanner->scan($path);
+        File::put($outputPath . '/api-request.ts', $generator->generate($this->buildRequestTypes()));
+        File::put($outputPath . '/api-resource.ts', $generator->generate($this->buildResourceTypes()));
 
-    $types = [];
-
-    foreach ($files as $file) {
-
-      $parsed = $parser->parse($file);
-
-      if (!$parsed) {
-        continue;
-      }
-
-      $className = $parsed['name'];
-      $rules = $parsed['rules'];
-
-      $fields = [];
-
-      foreach ($rules as $field => $ruleString) {
-
-        $parsedRules = RuleParser::parse($ruleString);
-
-        $fields[$field] = TypeMapper::map($parsedRules);
-      }
-
-      $types[$className] = $fields;
+        $this->info('types generated!');
     }
 
-    $generator = new TypeScriptGenerator();
-    $tsContent = $generator->generate($types);
+    private function buildRequestTypes(): array
+    {
+        $files = (new RequestScanner())->scan($this->laravel->basePath('app/Http/Requests'));
+        $parser = new RequestParser();
+        $types = [];
 
+        foreach ($files as $file) {
+            $parsed = $parser->parse($file);
 
-    $outputPath = $this->laravel->basePath('resources/types');
+            if (!$parsed) {
+                continue;
+            }
 
-    if (!File::exists($outputPath)) {
-      File::makeDirectory($outputPath, 0755, true);
+            $fields = [];
+
+            foreach ($parsed['rules'] as $field => $ruleString) {
+                $fields[$field] = TypeMapper::map(RuleParser::parse($ruleString));
+            }
+
+            $types[$parsed['name']] = $fields;
+        }
+
+        return $types;
     }
 
-    File::put($outputPath . '/api-request.ts', $tsContent);
+    private function buildResourceTypes(): array
+    {
+        $files = (new ResourceScanner())->scan($this->laravel->basePath('app/Http/Resources'));
+        $parser = new ResourceParser();
+        $types = [];
 
-    $this->info('Types generated!');
-  }
+        foreach ($files as $file) {
+            $parsed = $parser->parse($file);
+
+            if (!$parsed) {
+                continue;
+            }
+
+            $types[$parsed['name']] = $parsed['fields'];
+        }
+
+        return $types;
+    }
 }

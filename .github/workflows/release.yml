@@ -1,0 +1,53 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.2", "8.3"]
+        laravel:
+          - { version: "11.*", testbench: "9.*" }
+          - { version: "12.*", testbench: "10.*" }
+
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup php
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, fileinfo
+          coverage: none
+
+      - name: install dependencies
+        run: |
+          composer require \
+            "laravel/framework:${{ matrix.laravel.version }}" \
+            "orchestra/testbench:${{ matrix.laravel.testbench }}" \
+            --no-interaction --no-update
+          composer update --prefer-dist --no-interaction
+
+      - name: run tests
+        run: vendor/bin/phpunit
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: notify packagist
+        run: |
+          curl -s -f -XPOST \
+            -H "content-type: application/json" \
+            "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_TOKEN }}" \
+            -d '{"repository":{"url":"https://github.com/jdiassdev/laravel-types-gen"}}'

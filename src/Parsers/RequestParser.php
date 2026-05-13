@@ -2,8 +2,6 @@
 
 namespace Jdiassdev\LaravelTypesGen\Parsers;
 
-
-
 class RequestParser
 {
   public function parse(string $file): ?array
@@ -19,23 +17,54 @@ class RequestParser
 
   private function extractRules(string $content): array
   {
-    preg_match('/return\s*\[(.*?)\]\s*;/s', $content, $matches);
+    $block = $this->extractRulesBlock($content);
 
-    if (!isset($matches[1])) {
+    if ($block === null) {
       return [];
     }
 
-    return $this->convertRulesStringToMap($matches[1]);
+    return $this->parseRulesBlock($block);
   }
 
-  private function convertRulesStringToMap(string $rulesRaw): array
+  private function extractRulesBlock(string $content): ?string
+  {
+    $pos = strpos($content, 'return [');
+
+    if ($pos === false) {
+      return null;
+    }
+
+    $start = $pos + strlen('return [');
+    $depth = 1;
+    $i = $start;
+    $len = strlen($content);
+
+    while ($i < $len && $depth > 0) {
+      if ($content[$i] === '[') $depth++;
+      if ($content[$i] === ']') $depth--;
+      $i++;
+    }
+
+    return substr($content, $start, $i - $start - 1);
+  }
+
+  private function parseRulesBlock(string $block): array
   {
     $rules = [];
 
-    $lines = explode("\n", str_replace("\r", "", $rulesRaw));
+    // array-style: 'field' => ['rule1', 'rule2']
+    preg_match_all('/[\'"](?<key>[^\'"]+)[\'"]\s*=>\s*\[(?<value>[^\]]*)\]/s', $block, $arrayMatches, PREG_SET_ORDER);
 
-    foreach ($lines as $line) {
-      if (preg_match('/[\'"](?<key>.*?)[\'"]\s*=>\s*[\'"](?<value>.*?)[\'"]/', $line, $match)) {
+    foreach ($arrayMatches as $match) {
+      preg_match_all('/[\'"]([^\'"]+)[\'"]/', $match['value'], $items);
+      $rules[$match['key']] = implode('|', $items[1]);
+    }
+
+    // string-style: 'field' => 'rule1|rule2'
+    preg_match_all('/[\'"](?<key>[^\'"]+)[\'"]\s*=>\s*[\'"](?<value>[^\'"]*)[\'"]/', $block, $stringMatches, PREG_SET_ORDER);
+
+    foreach ($stringMatches as $match) {
+      if (!isset($rules[$match['key']])) {
         $rules[$match['key']] = $match['value'];
       }
     }

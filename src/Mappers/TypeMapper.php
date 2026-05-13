@@ -7,12 +7,16 @@ use Jdiassdev\LaravelTypesGen\Rules\TypeRules;
 
 class TypeMapper
 {
-    public static function map(array $rules): string
+    public static function map(array $rules): array
     {
         $type = 'any';
         $modifiers = '';
+        $optional = true;
 
         foreach ($rules as $rule) {
+            if ($rule === 'required') {
+                $optional = false;
+            }
 
             if (isset(TypeRules::TYPES[$rule])) {
                 $type = TypeRules::TYPES[$rule];
@@ -23,6 +27,9 @@ class TypeMapper
             }
         }
 
-        return $type . $modifiers;
+        return [
+            'type' => $type . $modifiers,
+            'optional' => $optional,
+        ];
     }
 }

@@ -13,11 +13,18 @@ class LaravelTypesGenServiceProvider extends ServiceProvider
             $this->commands([
                 GenerateRequestTypesCommand::class,
             ]);
+
+            $this->publishes([
+                __DIR__ . '/../config/laravel-types-gen.php' => config_path('laravel-types-gen.php'),
+            ], 'laravel-types-gen-config');
         }
     }
 
     public function register()
     {
-        //
+        $this->mergeConfigFrom(
+            __DIR__ . '/../config/laravel-types-gen.php',
+            'laravel-types-gen'
+        );
     }
 }

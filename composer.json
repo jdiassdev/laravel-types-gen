@@ -9,13 +9,13 @@
     "formrequest",
     "api-resource"
   ],
-  "version": "1.0.0",
-   "type": "library",
+  "type": "library",
   "license": "MIT",
   "homepage": "https://github.com/jdiassdev/laravel-types-gen",
   "authors": [
     {
       "name": "João Dias",
+      "email": "jdiassdev@gmail.com",
       "role": "Developer"
     }
   ],
@@ -32,7 +32,7 @@
   },
  "autoload-dev": {
   "psr-4": {
-    "Jdiassdev\\LaravelTypesGen\\Tests\\": "tests/"
+    "Jdiassdev\\LaravelTypesGen\\Tests\\": "Tests/"
   }
 },
   "extra": {
@@ -44,8 +44,11 @@
   },
 "require-dev": {
       "phpunit/phpunit": "^11.0",
-    "orchestra/testbench": "10.0"
+    "orchestra/testbench": "^9.0|^10.0"
 },
+  "scripts": {
+    "test": "vendor/bin/phpunit"
+  },
   "minimum-stability": "stable",
   "prefer-stable": true
 }
